@@ -35,4 +35,12 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException exception) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
+				"ไม่มีสิทธิ์เข้าถึง",
+				"UNAUTHORIZED",
+				null));
+	}
+
 }

@@ -9,9 +9,9 @@ import com.team.home_service_app_server.client.dto.SupabaseTokenResponse;
 import com.team.home_service_app_server.dto.LoginRequest;
 import com.team.home_service_app_server.dto.LoginResponse;
 import com.team.home_service_app_server.dto.SessionDto;
-import com.team.home_service_app_server.dto.UserDto;
 import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.InvalidCredentialsException;
+import com.team.home_service_app_server.mapper.UserMapper;
 import com.team.home_service_app_server.repository.UserRepository;
 
 @Service
@@ -19,10 +19,15 @@ public class AuthService {
 
 	private final SupabaseAuthClient supabaseAuthClient;
 	private final UserRepository userRepository;
+	private final UserMapper userMapper;
 
-	public AuthService(SupabaseAuthClient supabaseAuthClient, UserRepository userRepository) {
+	public AuthService(
+			SupabaseAuthClient supabaseAuthClient,
+			UserRepository userRepository,
+			UserMapper userMapper) {
 		this.supabaseAuthClient = supabaseAuthClient;
 		this.userRepository = userRepository;
+		this.userMapper = userMapper;
 	}
 
 	public LoginResponse login(LoginRequest request) {
@@ -33,34 +38,7 @@ public class AuthService {
 		User user = userRepository.findByEmail(request.email())
 				.orElseThrow(InvalidCredentialsException::new);
 
-		return LoginResponse.success(toUserDto(user), toSessionDto(tokenResponse));
-	}
-
-	private UserDto toUserDto(User user) {
-		String displayName = resolveDisplayName(user);
-		return new UserDto(
-				user.getUserId(),
-				user.getEmail(),
-				user.getFullName(),
-				displayName,
-				user.getFirstName(),
-				user.getLastName(),
-				user.getPhone(),
-				null,
-				user.getAvatarUrl(),
-				user.getRole().name());
-	}
-
-	private String resolveDisplayName(User user) {
-		if (user.getFullName() != null && !user.getFullName().isBlank()) {
-			return user.getFullName();
-		}
-		if (user.getFirstName() != null || user.getLastName() != null) {
-			return String.join(" ",
-					user.getFirstName() != null ? user.getFirstName() : "",
-					user.getLastName() != null ? user.getLastName() : "").trim();
-		}
-		return user.getEmail();
+		return LoginResponse.success(userMapper.toDto(user), toSessionDto(tokenResponse));
 	}
 
 	private SessionDto toSessionDto(SupabaseTokenResponse tokenResponse) {
