@@ -42,4 +42,23 @@ public class SupabaseAuthClient {
 		}
 	}
 
+	public void signOut(String accessToken) {
+		if (accessToken == null || accessToken.isBlank()) {
+			return;
+		}
+		try {
+			restClient.post()
+					.uri("/auth/v1/logout")
+					.header("apikey", properties.anonKey())
+					.header("Authorization", "Bearer " + accessToken)
+					.retrieve()
+					.toBodilessEntity();
+		} catch (RestClientResponseException exception) {
+			if (exception.getStatusCode().is4xxClientError()) {
+				return;
+			}
+			throw exception;
+		}
+	}
+
 }

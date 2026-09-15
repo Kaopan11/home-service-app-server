@@ -41,6 +41,10 @@ public class AuthService {
 		return LoginResponse.success(userMapper.toDto(user), toSessionDto(tokenResponse));
 	}
 
+	public void logout(String accessToken) {
+		supabaseAuthClient.signOut(accessToken);
+	}
+
 	private SessionDto toSessionDto(SupabaseTokenResponse tokenResponse) {
 		long expiresAt = Instant.now().getEpochSecond() + tokenResponse.expiresIn();
 		return new SessionDto(
