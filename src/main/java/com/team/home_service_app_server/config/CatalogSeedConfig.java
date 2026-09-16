@@ -22,10 +22,9 @@ public class CatalogSeedConfig {
 				return;
 			}
 
-			Category general = category("บริการทั่วไป");
-			Category kitchen = category("บริการห้องครัว");
-			Category bathroom = category("บริการห้องน้ำ");
-			categories.saveAll(List.of(general, kitchen, bathroom));
+			Category general = category(categories, "บริการทั่วไป");
+			Category kitchen = category(categories, "บริการห้องครัว");
+			Category bathroom = category(categories, "บริการห้องน้ำ");
 
 			Instant stamp = Instant.parse("2022-02-12T22:30:00Z");
 			services.saveAll(List.of(
@@ -41,11 +40,13 @@ public class CatalogSeedConfig {
 		};
 	}
 
-	private static Category category(String name) {
-		Category category = new Category();
-		category.setName(name);
-		category.setActive(true);
-		return category;
+	private static Category category(CategoryRepository categories, String name) {
+		return categories.findByName(name).orElseGet(() -> {
+			Category category = new Category();
+			category.setName(name);
+			category.setActive(true);
+			return categories.save(category);
+		});
 	}
 
 	private static ServiceItem item(int order, String name, Category category, Instant stamp) {

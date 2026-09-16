@@ -1,14 +1,19 @@
 package com.team.home_service_app_server.service;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.team.home_service_app_server.dto.UserDto;
+import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.ForbiddenException;
 import com.team.home_service_app_server.exception.UnauthorizedException;
 import com.team.home_service_app_server.mapper.UserMapper;
 import com.team.home_service_app_server.repository.UserRepository;
+import com.team.home_service_app_server.security.JwtPrincipal;
 
 @Service
 public class UserService {
@@ -35,9 +40,40 @@ public class UserService {
 			throw new UnauthorizedException();
 		}
 
-		return userRepository.findByEmail(authentication.getName())
+		return resolveUser(authentication)
 				.map(userMapper::toDto)
 				.orElseThrow(UnauthorizedException::new);
+	}
+
+	private Optional<User> resolveUser(Authentication authentication) {
+		JwtPrincipal principal = authentication.getDetails() instanceof JwtPrincipal jwtPrincipal
+				? jwtPrincipal
+				: new JwtPrincipal(authentication.getName(), null);
+
+		Optional<User> byEmail = Optional.empty();
+		if (principal.email() != null && !principal.email().isBlank()) {
+			byEmail = userRepository.findByEmail(principal.email());
+		} else {
+			byEmail = userRepository.findByEmail(authentication.getName());
+		}
+		if (byEmail.isPresent()) {
+			return byEmail;
+		}
+
+		return publicId(principal.subject())
+				.or(() -> publicId(authentication.getName()))
+				.flatMap(userRepository::findByPublicId);
+	}
+
+	private static Optional<UUID> publicId(String value) {
+		if (value == null || value.isBlank()) {
+			return Optional.empty();
+		}
+		try {
+			return Optional.of(UUID.fromString(value));
+		} catch (IllegalArgumentException exception) {
+			return Optional.empty();
+		}
 	}
 
 }
