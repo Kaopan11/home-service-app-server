@@ -24,12 +24,13 @@ public class ServiceItem {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "service_id")
 	private Long id;
 
-	@Column(nullable = false)
+	@Column(name = "service_name", nullable = false)
 	private String name;
 
-	@Column(name = "sort_order", nullable = false)
+	@Column(name = "display_order", nullable = false)
 	private Integer sortOrder;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

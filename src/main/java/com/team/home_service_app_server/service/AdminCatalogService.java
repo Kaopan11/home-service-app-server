@@ -43,7 +43,7 @@ public class AdminCatalogService {
 				item.getSortOrder(),
 				item.getName(),
 				item.getCategory().getName(),
-				item.getCategory().getTone(),
+				null,
 				item.getCreatedAt(),
 				item.getUpdatedAt());
 	}
