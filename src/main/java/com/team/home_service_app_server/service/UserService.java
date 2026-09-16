@@ -5,6 +5,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.team.home_service_app_server.dto.UserDto;
+import com.team.home_service_app_server.exception.ForbiddenException;
 import com.team.home_service_app_server.exception.UnauthorizedException;
 import com.team.home_service_app_server.mapper.UserMapper;
 import com.team.home_service_app_server.repository.UserRepository;
@@ -18,6 +19,14 @@ public class UserService {
 	public UserService(UserRepository userRepository, UserMapper userMapper) {
 		this.userRepository = userRepository;
 		this.userMapper = userMapper;
+	}
+
+	public UserDto requireAdmin() {
+		UserDto user = getCurrentUser();
+		if (user.role() == null || !"ADMIN".equals(user.role())) {
+			throw new ForbiddenException();
+		}
+		return user;
 	}
 
 	public UserDto getCurrentUser() {

@@ -43,4 +43,12 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(ForbiddenException.class)
+	public ResponseEntity<ApiError> handleForbidden(ForbiddenException exception) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(
+				"บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบ Admin",
+				"FORBIDDEN_ROLE",
+				null));
+	}
+
 }
