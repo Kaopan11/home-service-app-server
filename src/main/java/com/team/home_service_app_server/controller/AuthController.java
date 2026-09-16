@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.team.home_service_app_server.dto.LoginRequest;
 import com.team.home_service_app_server.dto.LoginResponse;
 import com.team.home_service_app_server.dto.MessageResponse;
+import com.team.home_service_app_server.dto.RegisterRequest;
 import com.team.home_service_app_server.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -29,6 +30,11 @@ public class AuthController {
 	@PostMapping("/login")
 	public LoginResponse login(@Valid @RequestBody LoginRequest request) {
 		return authService.login(request);
+	}
+
+	@PostMapping("/register")
+	public LoginResponse register(@Valid @RequestBody RegisterRequest request) {
+		return authService.register(request);
 	}
 
 	@PostMapping("/logout")
