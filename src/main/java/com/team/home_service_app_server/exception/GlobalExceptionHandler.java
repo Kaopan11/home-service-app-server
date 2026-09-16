@@ -27,10 +27,18 @@ public class GlobalExceptionHandler {
 				errors));
 	}
 
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ApiError> handleConflict(ConflictException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(
+				exception.getMessage(),
+				"CONFLICT",
+				null));
+	}
+
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
-				"อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+				exception.getMessage(),
 				"INVALID_CREDENTIALS",
 				null));
 	}
