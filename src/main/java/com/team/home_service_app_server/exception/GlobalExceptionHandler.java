@@ -59,4 +59,12 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ApiError> handleGeneral(Exception exception) {
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiError(
+				exception.getMessage() != null && !exception.getMessage().isBlank() ? exception.getMessage() : "เกิดข้อผิดพลาดภายในระบบ",
+				"INTERNAL_SERVER_ERROR",
+				null));
+	}
+
 }
