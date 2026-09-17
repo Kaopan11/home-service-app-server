@@ -33,8 +33,8 @@ public class SecurityConfig {
 				.exceptionHandling(handling -> handling.authenticationEntryPoint(unauthorizedEntryPoint))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-						.requestMatchers("/", "/health", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
-						.requestMatchers(HttpMethod.GET, "/api/services").permitAll()
+						.requestMatchers("/", "/health", "/error", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/services", "/api/services/**").permitAll()
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

@@ -64,10 +64,10 @@ public class SupabaseAuthClient {
 			}
 			return UUID.fromString(created.id());
 		} catch (RestClientResponseException exception) {
-			if (exception.getStatusCode().is4xxClientError()) {
+			if (exception.getStatusCode().value() == 422 || exception.getStatusCode().value() == 409) {
 				throw new ConflictException("อีเมลนี้ถูกใช้แล้ว");
 			}
-			throw exception;
+			throw new IllegalStateException("ไม่สามารถสร้างบัญชีผู้ใช้ใน Supabase ได้ (" + exception.getStatusCode() + "): " + exception.getResponseBodyAsString());
 		}
 	}
 
