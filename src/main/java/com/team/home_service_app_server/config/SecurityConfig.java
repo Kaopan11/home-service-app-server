@@ -34,6 +34,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers("/", "/health", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/services").permitAll()
 						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();
