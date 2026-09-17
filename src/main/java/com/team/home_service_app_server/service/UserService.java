@@ -1,12 +1,15 @@
 package com.team.home_service_app_server.service;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.team.home_service_app_server.dto.UpdateUserProfileRequest;
 import com.team.home_service_app_server.dto.UserDto;
 import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.ForbiddenException;
@@ -74,6 +77,57 @@ public class UserService {
 		} catch (IllegalArgumentException exception) {
 			return Optional.empty();
 		}
+	}
+
+	@Transactional
+	public UserDto updateCurrentUser(UpdateUserProfileRequest request) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication == null || authentication.getName() == null) {
+			throw new UnauthorizedException();
+		}
+
+		User user = resolveUser(authentication)
+				.orElseThrow(UnauthorizedException::new);
+
+		if (request.firstName() != null) {
+			user.setFirstName(request.firstName());
+		}
+		if (request.lastName() != null) {
+			user.setLastName(request.lastName());
+		}
+		if (request.displayName() != null && !request.displayName().isBlank()) {
+			user.setFullName(request.displayName());
+		} else if (user.getFirstName() != null || user.getLastName() != null) {
+			String combined = String.join(" ",
+					user.getFirstName() != null ? user.getFirstName() : "",
+					user.getLastName() != null ? user.getLastName() : "").trim();
+			if (!combined.isEmpty()) {
+				user.setFullName(combined);
+			}
+		}
+
+		if (request.phone() != null) {
+			user.setPhone(request.phone());
+		}
+		if (request.address() != null) {
+			user.setAddress(request.address());
+		}
+		if (request.subdistrict() != null) {
+			user.setSubdistrict(request.subdistrict());
+		}
+		if (request.district() != null) {
+			user.setDistrict(request.district());
+		}
+		if (request.province() != null) {
+			user.setProvince(request.province());
+		}
+		if (request.avatarUrl() != null) {
+			user.setAvatarUrl(request.avatarUrl());
+		}
+
+		user.setUpdatedAt(Instant.now());
+		User saved = userRepository.save(user);
+		return userMapper.toDto(saved);
 	}
 
 }

@@ -17,7 +17,10 @@ public class UserMapper {
 				user.getFirstName(),
 				user.getLastName(),
 				user.getPhone(),
-				null,
+				user.getAddress(),
+				user.getSubdistrict(),
+				user.getDistrict(),
+				user.getProvince(),
 				user.getAvatarUrl(),
 				user.getRole().name());
 	}

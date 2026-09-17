@@ -56,6 +56,18 @@ public class User {
 	@Column(name = "role", nullable = false)
 	private UserRole role;
 
+	@Column(name = "address")
+	private String address;
+
+	@Column(name = "subdistrict")
+	private String subdistrict;
+
+	@Column(name = "district")
+	private String district;
+
+	@Column(name = "province")
+	private String province;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
