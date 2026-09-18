@@ -1,0 +1,13 @@
+-- The promotions table already exists in Supabase.
+-- Do not run CREATE TABLE. Java maps to these columns:
+
+-- promotion_id   int8 IDENTITY PK
+-- promotion_code varchar UNIQUE NOT NULL  -> entity.code
+-- status         varchar NOT NULL         -> entity.status (default 'active')
+-- quota          int4 NOT NULL            -> entity.quotaLimit
+-- quota_used     int4 NOT NULL            -> entity.quotaUsed
+-- type           varchar NULL             -> entity.discountType ('fixed' | 'percent')
+-- discount       numeric NOT NULL         -> entity.discountValue
+-- expire         timestamptz NULL         -> entity.expiresAt
+-- created_at     timestamptz NOT NULL
+-- updated_at     timestamptz NOT NULL
