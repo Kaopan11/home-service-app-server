@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.team.home_service_app_server.dto.ServiceListResponse;
 import com.team.home_service_app_server.service.CatalogService;
 
+//สร้าง endpoint GET/api.services
 @RestController
 @RequestMapping("/api/services")
 public class ServiceController {
