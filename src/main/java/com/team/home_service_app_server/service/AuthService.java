@@ -1,12 +1,20 @@
 package com.team.home_service_app_server.service;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.team.home_service_app_server.client.SupabaseAuthClient;
 import com.team.home_service_app_server.client.dto.SupabaseTokenResponse;
+import com.team.home_service_app_server.config.SupabaseProperties;
+import com.team.home_service_app_server.dto.FacebookLoginRequest;
 import com.team.home_service_app_server.dto.LoginRequest;
 import com.team.home_service_app_server.dto.LoginResponse;
 import com.team.home_service_app_server.dto.RegisterRequest;
@@ -17,21 +25,40 @@ import com.team.home_service_app_server.exception.ConflictException;
 import com.team.home_service_app_server.exception.InvalidCredentialsException;
 import com.team.home_service_app_server.mapper.UserMapper;
 import com.team.home_service_app_server.repository.UserRepository;
+import com.team.home_service_app_server.security.JwtService;
+
+import io.jsonwebtoken.Claims;
 
 @Service
 public class AuthService {
 
+	private static final String DEFAULT_CALLBACK = "http://localhost:5173/auth/callback";
+	private static final String DEFAULT_ORIGINS =
+			"http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000";
+
 	private final SupabaseAuthClient supabaseAuthClient;
 	private final UserRepository userRepository;
 	private final UserMapper userMapper;
+	private final JwtService jwtService;
+	private final SupabaseProperties supabaseProperties;
+	private final List<String> allowedOrigins;
 
 	public AuthService(
 			SupabaseAuthClient supabaseAuthClient,
 			UserRepository userRepository,
-			UserMapper userMapper) {
+			UserMapper userMapper,
+			JwtService jwtService,
+			SupabaseProperties supabaseProperties,
+			@Value("${CORS_ALLOWED_ORIGINS:" + DEFAULT_ORIGINS + "}") String allowedOrigins) {
 		this.supabaseAuthClient = supabaseAuthClient;
 		this.userRepository = userRepository;
 		this.userMapper = userMapper;
+		this.jwtService = jwtService;
+		this.supabaseProperties = supabaseProperties;
+		this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
+				.map(String::trim)
+				.filter(origin -> !origin.isEmpty())
+				.toList();
 	}
 
 	public LoginResponse login(LoginRequest request) {
@@ -93,6 +120,81 @@ public class AuthService {
 
 	public void logout(String accessToken) {
 		supabaseAuthClient.signOut(accessToken);
+	}
+
+	/** สร้างลิงก์ไปหน้า Facebook ของ Supabase แล้วให้กลับมาที่เว็บเรา */
+	public String facebookAuthorizeUrl(String redirectTo) {
+		String callback = allowedCallback(redirectTo);
+		String baseUrl = supabaseProperties.url().replaceAll("/$", "");
+		return baseUrl
+				+ "/auth/v1/authorize?provider=facebook"
+				+ "&redirect_to=" + URLEncoder.encode(callback, StandardCharsets.UTF_8)
+				+ "&apikey=" + URLEncoder.encode(supabaseProperties.anonKey(), StandardCharsets.UTF_8);
+	}
+
+	/** ตรวจ JWT จาก Facebook แล้วหา/สร้างแถวใน public.users */
+	public LoginResponse loginWithFacebook(FacebookLoginRequest request) {
+		Claims claims = jwtService.parse(request.accessToken());
+		if (claims == null) {
+			throw new InvalidCredentialsException("เข้าสู่ระบบด้วย Facebook ไม่สำเร็จ");
+		}
+
+		FacebookProfile profile = FacebookProfile.from(claims);
+		User user = userRepository.findByPublicId(profile.authId())
+				.or(() -> userRepository.findByEmail(profile.email()))
+				.orElseGet(() -> createFacebookUser(profile));
+
+		long expiresAt = expiresAt(claims, request.expiresIn());
+		String refreshToken = request.refreshToken() == null ? "" : request.refreshToken();
+		return LoginResponse.success(userMapper.toDto(user), new SessionDto(
+				request.accessToken(),
+				refreshToken,
+				expiresAt,
+				"bearer"));
+	}
+
+	private User createFacebookUser(FacebookProfile profile) {
+		User user = new User();
+		Instant now = Instant.now();
+		String[] names = profile.fullName().split("\\s+", 2);
+		user.setPublicId(profile.authId());
+		user.setUsername(profile.email());
+		user.setFullName(profile.fullName());
+		user.setFirstName(names[0]);
+		user.setLastName(names.length > 1 ? names[1] : null);
+		user.setEmail(profile.email());
+		user.setAvatarUrl(profile.avatarUrl());
+		user.setRole(UserRole.USER);
+		user.setCreatedAt(now);
+		user.setUpdatedAt(now);
+		return userRepository.save(user);
+	}
+
+	private String allowedCallback(String redirectTo) {
+		if (redirectTo == null || redirectTo.isBlank()) {
+			return DEFAULT_CALLBACK;
+		}
+		try {
+			URI uri = URI.create(redirectTo);
+			String origin = uri.getScheme() + "://" + uri.getAuthority();
+			String path = uri.getPath();
+			if (allowedOrigins.contains(origin) && "/auth/callback".equals(path)) {
+				return redirectTo;
+			}
+		} catch (IllegalArgumentException ignored) {
+			// ใช้ค่าเริ่มต้นด้านล่าง
+		}
+		return DEFAULT_CALLBACK;
+	}
+
+	private static long expiresAt(Claims claims, Long expiresIn) {
+		if (expiresIn != null && expiresIn > 0) {
+			return Instant.now().getEpochSecond() + expiresIn;
+		}
+		if (claims.getExpiration() != null) {
+			return claims.getExpiration().toInstant().getEpochSecond();
+		}
+		return Instant.now().getEpochSecond() + 3600;
 	}
 
 	private SessionDto toSessionDto(SupabaseTokenResponse tokenResponse) {
