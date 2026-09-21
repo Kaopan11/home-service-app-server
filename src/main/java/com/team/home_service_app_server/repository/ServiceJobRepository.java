@@ -7,12 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.team.home_service_app_server.entity.JobStatus;
 import com.team.home_service_app_server.entity.ServiceJob;
 
 public interface ServiceJobRepository extends JpaRepository<ServiceJob, Long> {
-
-	long countByStatus(JobStatus status);
 
 	@Query("""
 			SELECT COUNT(job) FROM ServiceJob job
