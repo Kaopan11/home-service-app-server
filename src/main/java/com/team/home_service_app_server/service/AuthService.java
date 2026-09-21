@@ -1,6 +1,5 @@
 package com.team.home_service_app_server.service;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -135,21 +134,16 @@ public class AuthService {
 	/** ตรวจ JWT จาก Facebook แล้วหา/สร้างแถวใน public.users */
 	public LoginResponse loginWithFacebook(FacebookLoginRequest request) {
 		Claims claims = jwtService.parse(request.accessToken());
-		if (claims == null) {
-			throw new InvalidCredentialsException("เข้าสู่ระบบด้วย Facebook ไม่สำเร็จ");
-		}
-
 		FacebookProfile profile = FacebookProfile.from(claims);
 		User user = userRepository.findByPublicId(profile.authId())
 				.or(() -> userRepository.findByEmail(profile.email()))
 				.orElseGet(() -> createFacebookUser(profile));
 
-		long expiresAt = expiresAt(claims, request.expiresIn());
 		String refreshToken = request.refreshToken() == null ? "" : request.refreshToken();
 		return LoginResponse.success(userMapper.toDto(user), new SessionDto(
 				request.accessToken(),
 				refreshToken,
-				expiresAt,
+				expiresAt(claims, request.expiresIn()),
 				"bearer"));
 	}
 
@@ -171,18 +165,12 @@ public class AuthService {
 	}
 
 	private String allowedCallback(String redirectTo) {
-		if (redirectTo == null || redirectTo.isBlank()) {
-			return DEFAULT_CALLBACK;
-		}
-		try {
-			URI uri = URI.create(redirectTo);
-			String origin = uri.getScheme() + "://" + uri.getAuthority();
-			String path = uri.getPath();
-			if (allowedOrigins.contains(origin) && "/auth/callback".equals(path)) {
-				return redirectTo;
+		if (redirectTo != null) {
+			for (String origin : allowedOrigins) {
+				if (redirectTo.equals(origin + "/auth/callback")) {
+					return redirectTo;
+				}
 			}
-		} catch (IllegalArgumentException ignored) {
-			// ใช้ค่าเริ่มต้นด้านล่าง
 		}
 		return DEFAULT_CALLBACK;
 	}
