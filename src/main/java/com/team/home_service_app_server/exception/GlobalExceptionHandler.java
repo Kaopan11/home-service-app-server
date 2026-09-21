@@ -53,8 +53,11 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ForbiddenException.class)
 	public ResponseEntity<ApiError> handleForbidden(ForbiddenException exception) {
+		String message = exception.getMessage() == null || exception.getMessage().isBlank()
+				? "บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบ Admin"
+				: exception.getMessage();
 		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(
-				"บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบ Admin",
+				message,
 				"FORBIDDEN_ROLE",
 				null));
 	}

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.team.home_service_app_server.dto.UpdateUserProfileRequest;
 import com.team.home_service_app_server.dto.UserDto;
 import com.team.home_service_app_server.entity.User;
+import com.team.home_service_app_server.entity.UserRole;
 import com.team.home_service_app_server.exception.ForbiddenException;
 import com.team.home_service_app_server.exception.UnauthorizedException;
 import com.team.home_service_app_server.mapper.UserMapper;
@@ -30,22 +31,32 @@ public class UserService {
 	}
 
 	public UserDto requireAdmin() {
-		UserDto user = getCurrentUser();
-		if (user.role() == null || !"ADMIN".equals(user.role())) {
+		User user = requireCurrentUserEntity();
+		if (user.getRole() != UserRole.ADMIN) {
 			throw new ForbiddenException();
+		}
+		return userMapper.toDto(user);
+	}
+
+	public User requireCurrentTechnician() {
+		User user = requireCurrentUserEntity();
+		if (user.getRole() != UserRole.TECHNICIAN) {
+			throw new ForbiddenException("บัญชีนี้ไม่มีสิทธิ์เข้าถึงระบบช่าง");
 		}
 		return user;
 	}
 
 	public UserDto getCurrentUser() {
+		return userMapper.toDto(requireCurrentUserEntity());
+	}
+
+	public User requireCurrentUserEntity() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || authentication.getName() == null) {
 			throw new UnauthorizedException();
 		}
 
-		return resolveUser(authentication)
-				.map(userMapper::toDto)
-				.orElseThrow(UnauthorizedException::new);
+		return resolveUser(authentication).orElseThrow(UnauthorizedException::new);
 	}
 
 	private Optional<User> resolveUser(Authentication authentication) {

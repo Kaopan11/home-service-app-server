@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 import com.team.home_service_app_server.entity.Category;
 import com.team.home_service_app_server.entity.ServiceItem;
@@ -16,6 +17,7 @@ import com.team.home_service_app_server.repository.ServiceItemRepository;
 public class CatalogSeedConfig {
 
 	@Bean
+	@Order(1)
 	CommandLineRunner seedCatalog(CategoryRepository categories, ServiceItemRepository services) {
 		return args -> {
 			if (services.count() > 0) {
