@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.team.home_service_app_server.dto.MessageResponse;
 import com.team.home_service_app_server.dto.technician.TechnicianJobListResponse;
 import com.team.home_service_app_server.dto.technician.TechnicianJobResponse;
 import com.team.home_service_app_server.dto.technician.TechnicianPendingCountResponse;
@@ -34,5 +35,11 @@ public class TechnicianJobController {
 	@PostMapping("/{id}/accept")
 	public TechnicianJobResponse accept(@PathVariable Long id) {
 		return TechnicianJobResponse.success(technicianJobService.accept(id));
+	}
+
+	@PostMapping("/{id}/decline")
+	public MessageResponse decline(@PathVariable Long id) {
+		technicianJobService.decline(id);
+		return new MessageResponse("ปฏิเสธคำขอบริการแล้ว");
 	}
 }
