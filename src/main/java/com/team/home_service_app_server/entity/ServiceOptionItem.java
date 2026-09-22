@@ -1,5 +1,6 @@
 package com.team.home_service_app_server.entity;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import jakarta.persistence.Column;
@@ -17,37 +18,28 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "services")
+@Table(name = "service_options")
 @Getter
 @Setter
-public class ServiceItem {
+public class ServiceOptionItem {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "service_id")
+	@Column(name = "option_id")
 	private Long id;
 
-	@Column(name = "service_name", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "service_id", nullable = false)
+	private ServiceItem service;
+
+	@Column(name = "option_name", nullable = false)
 	private String name;
 
-	@Column(name = "image_url")
-	private String imageUrl;
+	@Column(nullable = false)
+	private String unit;
 
-	@Column(name = "is_featured", nullable = false)
-	private boolean featured = false;
-
-	@Column(name = "display_order", nullable = false)
-	private Integer sortOrder;
-
-	@Column(name = "popularity_score", nullable = false)
-	private Integer popularityScore = 0;
-
-	@Column(name = "is_active", nullable = false)
-	private boolean active = true;
-
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "category_id", nullable = false)
-	private Category category;
+	@Column(nullable = false, precision = 12, scale = 2)
+	private BigDecimal price;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -57,11 +49,12 @@ public class ServiceItem {
 
 	@PrePersist
 	void onCreate() {
+		Instant now = Instant.now();
 		if (createdAt == null) {
-			createdAt = Instant.now();
+			createdAt = now;
 		}
 		if (updatedAt == null) {
-			updatedAt = createdAt;
+			updatedAt = now;
 		}
 	}
 
