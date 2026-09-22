@@ -35,6 +35,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(PasswordChangeException.class)
+	public ResponseEntity<ApiError> handlePasswordChange(PasswordChangeException exception) {
+		return ResponseEntity.badRequest().body(new ApiError(
+				exception.getMessage(),
+				exception.code(),
+				exception.errors()));
+	}
+
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
