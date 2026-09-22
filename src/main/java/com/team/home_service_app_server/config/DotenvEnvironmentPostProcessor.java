@@ -1,12 +1,13 @@
 package com.team.home_service_app_server.config;
 
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.StandardEnvironment;
 
 public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
@@ -19,14 +20,12 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor 
 			return;
 		}
 
-		MapPropertySource propertySource = new MapPropertySource(PROPERTY_SOURCE_NAME, values);
-		if (environment.getPropertySources().contains(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME)) {
-			environment.getPropertySources().addAfter(
-					StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
-					propertySource);
-		} else {
-			environment.getPropertySources().addFirst(propertySource);
-		}
+		Map<String, Object> expanded = new LinkedHashMap<>(values);
+		values.forEach((key, value) -> expanded.putIfAbsent(canonicalKey(key), value));
+		environment.getPropertySources().addFirst(new MapPropertySource(PROPERTY_SOURCE_NAME, expanded));
 	}
 
+	private static String canonicalKey(String key) {
+		return key.toLowerCase(Locale.ROOT).replace('_', '.');
+	}
 }
