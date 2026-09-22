@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team.home_service_app_server.dto.technician.TechnicianJobDto;
 import com.team.home_service_app_server.entity.JobStatus;
+import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.ServiceItem;
 import com.team.home_service_app_server.entity.ServiceJob;
 import com.team.home_service_app_server.entity.TechnicianProfile;
@@ -24,14 +25,17 @@ public class TechnicianJobService {
 	private final UserService userService;
 	private final TechnicianProfileRepository technicianProfileRepository;
 	private final ServiceJobRepository serviceJobRepository;
+	private final NotificationService notificationService;
 
 	public TechnicianJobService(
 			UserService userService,
 			TechnicianProfileRepository technicianProfileRepository,
-			ServiceJobRepository serviceJobRepository) {
+			ServiceJobRepository serviceJobRepository,
+			NotificationService notificationService) {
 		this.userService = userService;
 		this.technicianProfileRepository = technicianProfileRepository;
 		this.serviceJobRepository = serviceJobRepository;
+		this.notificationService = notificationService;
 	}
 
 	@Transactional(readOnly = true)
@@ -73,7 +77,16 @@ public class TechnicianJobService {
 
 		job.setTechnician(technician);
 		job.setStatus(JobStatus.ACCEPTED);
-		return toDto(serviceJobRepository.save(job));
+		ServiceJob saved = serviceJobRepository.save(job);
+
+		notificationService.notify(
+				saved.getCustomer(),
+				NotificationType.JOB_ACCEPTED,
+				"ช่างรับงานของคุณแล้ว",
+				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + saved.getService().getName() + "\" ของคุณแล้ว",
+				saved);
+
+		return toDto(saved);
 	}
 
 	private Set<Long> acceptedServiceIds() {
