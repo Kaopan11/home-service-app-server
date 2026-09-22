@@ -70,6 +70,18 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+	public ResponseEntity<ApiError> handleResponseStatus(
+			org.springframework.web.server.ResponseStatusException exception) {
+		String message = exception.getReason() == null || exception.getReason().isBlank()
+				? exception.getMessage()
+				: exception.getReason();
+		return ResponseEntity.status(exception.getStatusCode()).body(new ApiError(
+				message,
+				"NOT_FOUND",
+				null));
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiError> handleGeneral(Exception exception) {
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiError(
