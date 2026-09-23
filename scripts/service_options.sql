@@ -1,0 +1,4 @@
+-- Supabase tables used by GET /api/services and GET /api/services/{id}
+-- services: service_id, category_id, service_name, image_url, is_featured,
+--           display_order, popularity_score, is_active, created_at, updated_at
+-- service_options: option_id, service_id, option_name, price, unit, created_at, updated_at

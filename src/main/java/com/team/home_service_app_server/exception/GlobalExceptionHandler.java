@@ -35,6 +35,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(PasswordChangeException.class)
+	public ResponseEntity<ApiError> handlePasswordChange(PasswordChangeException exception) {
+		return ResponseEntity.badRequest().body(new ApiError(
+				exception.getMessage(),
+				exception.code(),
+				exception.errors()));
+	}
+
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
@@ -62,11 +70,15 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
-	@ExceptionHandler(PaymentFailedException.class)
-	public ResponseEntity<ApiError> handlePaymentFailed(PaymentFailedException exception) {
-		return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(new ApiError(
-				exception.getMessage(),
-				"PAYMENT_FAILED",
+	@ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+	public ResponseEntity<ApiError> handleResponseStatus(
+			org.springframework.web.server.ResponseStatusException exception) {
+		String message = exception.getReason() == null || exception.getReason().isBlank()
+				? exception.getMessage()
+				: exception.getReason();
+		return ResponseEntity.status(exception.getStatusCode()).body(new ApiError(
+				message,
+				"NOT_FOUND",
 				null));
 	}
 
