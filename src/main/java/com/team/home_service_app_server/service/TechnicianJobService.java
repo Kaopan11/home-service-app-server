@@ -7,7 +7,9 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team.home_service_app_server.dto.technician.TechnicianJobDetailDto;
 import com.team.home_service_app_server.dto.technician.TechnicianJobDto;
+import com.team.home_service_app_server.dto.technician.TechnicianJobItemDto;
 import com.team.home_service_app_server.entity.JobStatus;
 import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.ServiceItem;
@@ -123,6 +125,115 @@ public class TechnicianJobService {
 		return profile.getServices().stream()
 				.map(ServiceItem::getId)
 				.collect(Collectors.toSet());
+	}
+
+	@Transactional(readOnly = true)
+	public List<TechnicianJobItemDto> listPendingJobs(String sort) {
+		User technician = userService.requireCurrentTechnician();
+		String sortMode = "soonest".equalsIgnoreCase(sort) ? "soonest" : "latest";
+		return serviceJobRepository.findPendingByTechnician(technician.getUserId(), sortMode).stream()
+				.map(this::toItemDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<TechnicianJobItemDto> listHistoryJobs() {
+		User technician = userService.requireCurrentTechnician();
+		return serviceJobRepository.findHistoryByTechnician(technician.getUserId()).stream()
+				.map(this::toItemDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public TechnicianJobDetailDto getJobDetail(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findByIdAndTechnician(jobId, technician.getUserId())
+				.orElseThrow(() -> new BadRequestException("ไม่พบข้อมูลคำสั่งซ่อม"));
+		return toDetailDto(job);
+	}
+
+	@Transactional
+	public TechnicianJobDetailDto completeJob(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findByIdAndTechnician(jobId, technician.getUserId())
+				.orElseThrow(() -> new BadRequestException("ไม่พบข้อมูลคำสั่งซ่อม"));
+		if (job.getStatus() != JobStatus.ACCEPTED) {
+			throw new BadRequestException("สามารถจบงานได้เฉพาะงานที่อยู่ในสถานะรอดำเนินการเท่านั้น");
+		}
+		job.setStatus(JobStatus.COMPLETED);
+		ServiceJob saved = serviceJobRepository.save(job);
+		return toDetailDto(saved);
+	}
+
+	private TechnicianJobItemDto toItemDto(ServiceJob job) {
+		String customerName = job.getCustomer().getFullName();
+		if (customerName == null || customerName.isBlank()) {
+			customerName = job.getCustomer().getEmail();
+		}
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		Long categoryId = job.getService().getCategory() != null && job.getService().getCategory().getCategoryId() != null
+				? job.getService().getCategory().getCategoryId().longValue()
+				: null;
+		String categoryName = job.getService().getCategory() != null ? job.getService().getCategory().getName() : "";
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null ? job.getTotalPrice() : java.math.BigDecimal.valueOf(1550);
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+
+		return new TechnicianJobItemDto(
+				job.getId(),
+				orderCode,
+				job.getService().getId(),
+				job.getService().getName(),
+				categoryId,
+				categoryName,
+				scheduledAt,
+				totalPrice,
+				job.getStatus().name(),
+				job.getAddress(),
+				customerName);
+	}
+
+	private TechnicianJobDetailDto toDetailDto(ServiceJob job) {
+		String customerName = job.getCustomer().getFullName();
+		if (customerName == null || customerName.isBlank()) {
+			customerName = job.getCustomer().getEmail();
+		}
+		String customerPhone = job.getCustomer().getPhone() != null ? job.getCustomer().getPhone() : "";
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		Long categoryId = job.getService().getCategory() != null && job.getService().getCategory().getCategoryId() != null
+				? job.getService().getCategory().getCategoryId().longValue()
+				: null;
+		String categoryName = job.getService().getCategory() != null ? job.getService().getCategory().getName() : "";
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null ? job.getTotalPrice() : java.math.BigDecimal.valueOf(1550);
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+		String itemsDescription = job.getItemsDescription() != null && !job.getItemsDescription().isBlank()
+				? job.getItemsDescription()
+				: job.getService().getName();
+
+		return new TechnicianJobDetailDto(
+				job.getId(),
+				orderCode,
+				job.getService().getId(),
+				job.getService().getName(),
+				categoryId,
+				categoryName,
+				itemsDescription,
+				scheduledAt,
+				job.getAddress(),
+				job.getLatitude(),
+				job.getLongitude(),
+				totalPrice,
+				customerName,
+				customerPhone,
+				job.getRating() != null ? job.getRating() : (job.getStatus() == JobStatus.COMPLETED ? 5 : null),
+				job.getReviewComment(),
+				job.getStatus().name(),
+				job.getCreatedAt());
 	}
 
 	private TechnicianJobDto toDto(ServiceJob job) {
