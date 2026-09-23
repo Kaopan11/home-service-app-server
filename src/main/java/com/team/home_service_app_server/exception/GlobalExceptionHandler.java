@@ -62,6 +62,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(PaymentFailedException.class)
+	public ResponseEntity<ApiError> handlePaymentFailed(PaymentFailedException exception) {
+		return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(new ApiError(
+				exception.getMessage(),
+				"PAYMENT_FAILED",
+				null));
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiError> handleGeneral(Exception exception) {
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiError(
