@@ -1,5 +1,9 @@
 package com.team.home_service_app_server.client;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -29,6 +33,13 @@ public class OmiseClient {
 	}
 
 	public OmiseChargeResponse createCharge(String token, long amountSatang, String currency, String description) {
+		if (token == null || token.isBlank()) {
+			throw new PaymentFailedException("Token การชำระเงินไม่ถูกต้อง");
+		}
+		if (amountSatang <= 0) {
+			throw new PaymentFailedException("จำนวนเงินต้องมากกว่า 0");
+		}
+
 		Map<String, Object> body = new LinkedHashMap<>();
 		body.put("amount", amountSatang);
 		body.put("currency", currency);
@@ -41,6 +52,10 @@ public class OmiseClient {
 			OmiseChargeResponse response = restClient.post()
 					.uri("/charges")
 					.contentType(MediaType.APPLICATION_JSON)
+					// Derived from the (one-time-use) token so a duplicate request carrying
+					// the same token - e.g. a double click or a network-layer retry - reuses
+					// the original charge instead of billing the card twice.
+					.header("Idempotency-Key", idempotencyKeyFor(token))
 					.body(body)
 					.retrieve()
 					.body(OmiseChargeResponse.class);
@@ -50,6 +65,17 @@ public class OmiseClient {
 			return response;
 		} catch (RestClientResponseException exception) {
 			throw new PaymentFailedException(extractErrorMessage(exception));
+		}
+	}
+
+	private String idempotencyKeyFor(String token) {
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+			return "charge-" + HexFormat.of().formatHex(hash);
+		} catch (NoSuchAlgorithmException exception) {
+			// SHA-256 is always available on the standard JVM providers; this is unreachable.
+			throw new IllegalStateException(exception);
 		}
 	}
 
