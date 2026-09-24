@@ -1,7 +1,11 @@
 package com.team.home_service_app_server.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +35,7 @@ public class AdminCategoryService {
 	@Transactional(readOnly = true)
 	public List<CategoryDto> list() {
 		userService.requireAdmin();
-		return categoryRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toDto).toList();
+		return categoryRepository.findAllByOrderBySortOrderAscCreatedAtAsc().stream().map(this::toDto).toList();
 	}
 
 	@Transactional(readOnly = true)
@@ -48,6 +52,7 @@ public class AdminCategoryService {
 		Category category = new Category();
 		category.setName(name);
 		category.setActive(true);
+		category.setSortOrder(nextSortOrder());
 		return toDto(categoryRepository.save(category));
 	}
 
@@ -77,6 +82,28 @@ public class AdminCategoryService {
 		}
 	}
 
+	@Transactional
+	public List<CategoryDto> reorder(List<Integer> ids) {
+		userService.requireAdmin();
+		if (ids == null || ids.isEmpty() || ids.stream().anyMatch(Objects::isNull)) {
+			throw new CategoryValidationException("category ids are required");
+		}
+		if (ids.size() != new HashSet<>(ids).size()) {
+			throw new CategoryValidationException("category ids must be unique");
+		}
+		List<Category> current = categoryRepository.findAllByActiveTrueOrderBySortOrderAscCreatedAtAsc();
+		if (current.size() != ids.size()
+				|| !current.stream().map(Category::getCategoryId).collect(Collectors.toSet()).equals(new HashSet<>(ids))) {
+			throw new CategoryValidationException("category ids must include every active category");
+		}
+		Map<Integer, Category> byId = current.stream().collect(Collectors.toMap(Category::getCategoryId, item -> item));
+		for (int index = 0; index < ids.size(); index++) {
+			byId.get(ids.get(index)).setSortOrder(index + 1);
+		}
+		categoryRepository.saveAll(current);
+		return categoryRepository.findAllByOrderBySortOrderAscCreatedAtAsc().stream().map(this::toDto).toList();
+	}
+
 	private Category findOrThrow(int id) {
 		return categoryRepository.findById(id).orElseThrow(CategoryNotFoundException::new);
 	}
@@ -93,6 +120,14 @@ public class AdminCategoryService {
 			throw new CategoryValidationException("name must be at most 255 characters");
 		}
 		return name;
+	}
+
+	private int nextSortOrder() {
+		return categoryRepository.findAllByActiveTrueOrderBySortOrderAscCreatedAtAsc().stream()
+				.map(Category::getSortOrder)
+				.filter(Objects::nonNull)
+				.max(Integer::compareTo)
+				.orElse(0) + 1;
 	}
 
 	private void assertNameAvailable(String name, Integer currentId) {

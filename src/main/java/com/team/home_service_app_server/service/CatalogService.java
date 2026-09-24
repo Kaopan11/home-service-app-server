@@ -43,7 +43,7 @@ public class CatalogService {
 	public ServiceDetailDto getById(long serviceId) {
 		ServiceItem item = serviceItemRepository.findWithCategoryById(serviceId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
-		List<ServiceOptionDto> options = serviceOptionRepository.findByService_IdOrderByIdAsc(serviceId).stream()
+		List<ServiceOptionDto> options = serviceOptionRepository.findByService_IdOrderBySortOrderAscIdAsc(serviceId).stream()
 				.map(this::toOptionDto)
 				.toList();
 		return new ServiceDetailDto(
@@ -82,7 +82,7 @@ public class CatalogService {
 	private ServiceOptionDto toOptionDto(ServiceOptionItem option) {
 		BigDecimal price = option.getPrice() == null ? BigDecimal.ZERO : option.getPrice();
 		String unit = option.getUnit() == null || option.getUnit().isBlank() ? "ชิ้น" : option.getUnit();
-		return new ServiceOptionDto(option.getId(), option.getName(), unit, price);
+		return new ServiceOptionDto(option.getId(), option.getName(), unit, price, option.getSortOrder());
 	}
 
 	private static String blankToEmpty(String value) {

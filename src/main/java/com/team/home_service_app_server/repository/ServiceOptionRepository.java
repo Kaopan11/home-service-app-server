@@ -9,7 +9,9 @@ import com.team.home_service_app_server.entity.ServiceOptionItem;
 
 public interface ServiceOptionRepository extends JpaRepository<ServiceOptionItem, Long> {
 
-	List<ServiceOptionItem> findByService_IdOrderByIdAsc(Long serviceId);
+	List<ServiceOptionItem> findByService_IdOrderBySortOrderAscIdAsc(Long serviceId);
+
+	void deleteByService_Id(Long serviceId);
 
 	@Query("select o.service.id, min(o.price) from ServiceOptionItem o group by o.service.id")
 	List<Object[]> findMinPriceByServiceId();

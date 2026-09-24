@@ -11,9 +11,9 @@ import com.team.home_service_app_server.entity.ServiceItem;
 
 public interface ServiceItemRepository extends JpaRepository<ServiceItem, Long> {
 
-	List<ServiceItem> findAllByOrderBySortOrderAsc();
+	List<ServiceItem> findAllByActiveTrueOrderBySortOrderAsc();
 
-	@Query("select s from ServiceItem s join fetch s.category order by s.sortOrder asc")
+	@Query("select s from ServiceItem s join fetch s.category where s.active = true order by s.sortOrder asc")
 	List<ServiceItem> findAllWithCategoryOrderBySortOrderAsc();
 
 	@Query("select s from ServiceItem s join fetch s.category where s.id = :id")

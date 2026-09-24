@@ -41,6 +41,9 @@ public class ServiceOptionItem {
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal price;
 
+	@Column(name = "display_order", nullable = false)
+	private Integer sortOrder = 0;
+
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
 
