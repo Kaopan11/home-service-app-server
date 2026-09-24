@@ -6,6 +6,7 @@ public record AdminServiceDto(
 		Long id,
 		Integer sortOrder,
 		String name,
+		Integer categoryId,
 		String categoryName,
 		String categoryTone,
 		Instant createdAt,
