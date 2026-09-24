@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.team.home_service_app_server.dto.category.CategoryApiResponse;
 import com.team.home_service_app_server.dto.category.CreateCategoryRequest;
 import com.team.home_service_app_server.dto.category.PatchCategoryRequest;
+import com.team.home_service_app_server.dto.category.ReorderCategoriesRequest;
 import com.team.home_service_app_server.exception.CategoryValidationException;
 import com.team.home_service_app_server.service.AdminCategoryService;
 
@@ -30,6 +31,11 @@ public class AdminCategoryController {
 	@GetMapping
 	public CategoryApiResponse list() {
 		return CategoryApiResponse.list(adminCategoryService.list());
+	}
+
+	@PatchMapping
+	public CategoryApiResponse reorder(@RequestBody(required = false) ReorderCategoriesRequest request) {
+		return CategoryApiResponse.list(adminCategoryService.reorder(request == null ? null : request.ids()));
 	}
 
 	@GetMapping("/{id}")

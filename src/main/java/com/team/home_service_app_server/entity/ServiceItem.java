@@ -30,7 +30,8 @@ public class ServiceItem {
 	@Column(name = "service_name", nullable = false)
 	private String name;
 
-	@Column(name = "image_url")
+	// ponytail: images are stored as data URLs for this MVP; move them to object storage when image volume grows.
+	@Column(name = "image_url", columnDefinition = "TEXT")
 	private String imageUrl;
 
 	@Column(name = "is_featured", nullable = false)

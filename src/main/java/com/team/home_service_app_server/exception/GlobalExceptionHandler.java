@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.team.home_service_app_server.dto.ApiError;
 
@@ -78,15 +79,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
-	@ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
-	public ResponseEntity<ApiError> handleResponseStatus(
-			org.springframework.web.server.ResponseStatusException exception) {
-		String message = exception.getReason() == null || exception.getReason().isBlank()
-				? exception.getMessage()
-				: exception.getReason();
+	@ExceptionHandler(ResponseStatusException.class)
+	public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
+		String code = exception.getStatusCode() instanceof HttpStatus status
+				? status.name()
+				: "HTTP_ERROR";
 		return ResponseEntity.status(exception.getStatusCode()).body(new ApiError(
-				message,
-				"NOT_FOUND",
+				exception.getReason() == null ? code : exception.getReason(),
+				code,
 				null));
 	}
 

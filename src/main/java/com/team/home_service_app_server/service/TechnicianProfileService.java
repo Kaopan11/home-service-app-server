@@ -116,7 +116,7 @@ public class TechnicianProfileService {
 	}
 
 	private TechnicianProfileDto toDto(User user, TechnicianProfile profile) {
-		List<TechnicianServiceOptionDto> catalog = serviceItemRepository.findAllByOrderBySortOrderAsc().stream()
+		List<TechnicianServiceOptionDto> catalog = serviceItemRepository.findAllByActiveTrueOrderBySortOrderAsc().stream()
 				.map(item -> new TechnicianServiceOptionDto(item.getId(), item.getName()))
 				.toList();
 		Set<Long> accepted = new LinkedHashSet<>();
