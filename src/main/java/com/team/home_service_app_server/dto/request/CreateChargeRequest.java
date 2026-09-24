@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 public record CreateChargeRequest(
 		@NotBlank(message = "กรุณาระบุ token การชำระเงิน") String token,
 		@NotNull(message = "กรุณาระบุยอดชำระเงิน")
-		@DecimalMin(value = "1", message = "ยอดชำระเงินไม่ถูกต้อง") BigDecimal amount,
+		@DecimalMin(value = "20", message = "ยอดชำระเงินต้องไม่ต่ำกว่า 20 บาท") BigDecimal amount,
 		String description
 ) {
 }

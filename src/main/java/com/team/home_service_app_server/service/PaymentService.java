@@ -15,6 +15,9 @@ public class PaymentService {
 
 	private static final String CURRENCY = "thb";
 
+	// Omise's minimum chargeable amount for THB is 20 baht.
+	private static final BigDecimal MIN_AMOUNT_BAHT = BigDecimal.valueOf(20);
+
 	private final OmiseClient omiseClient;
 
 	public PaymentService(OmiseClient omiseClient) {
@@ -22,12 +25,20 @@ public class PaymentService {
 	}
 
 	public ChargeResponse.ChargeData charge(String token, BigDecimal amountBaht, String description) {
+		if (amountBaht.compareTo(MIN_AMOUNT_BAHT) < 0) {
+			throw new PaymentFailedException("จำนวนเงินต้องไม่ต่ำกว่า 20 บาท");
+		}
+
 		long amountSatang = amountBaht
 				.multiply(BigDecimal.valueOf(100))
 				.setScale(0, RoundingMode.HALF_UP)
 				.longValueExact();
 
 		OmiseChargeResponse response = omiseClient.createCharge(token, amountSatang, CURRENCY, description);
+
+		if (response == null) {
+			throw new PaymentFailedException("ไม่ได้รับผลลัพธ์จาก Omise");
+		}
 
 		if (!response.paid() || !"successful".equals(response.status())) {
 			String reason = response.failureMessage() != null && !response.failureMessage().isBlank()
