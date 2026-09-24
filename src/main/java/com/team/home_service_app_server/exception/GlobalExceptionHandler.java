@@ -59,6 +59,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ApiError> handleBadRequest(BadRequestException exception) {
+		return ResponseEntity.badRequest().body(new ApiError(
+				exception.getMessage(),
+				"BAD_REQUEST",
+				null));
+	}
+
 	@ExceptionHandler(ForbiddenException.class)
 	public ResponseEntity<ApiError> handleForbidden(ForbiddenException exception) {
 		String message = exception.getMessage() == null || exception.getMessage().isBlank()
