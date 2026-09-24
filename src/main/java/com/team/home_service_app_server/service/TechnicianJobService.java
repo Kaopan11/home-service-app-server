@@ -12,11 +12,13 @@ import com.team.home_service_app_server.entity.JobStatus;
 import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.ServiceItem;
 import com.team.home_service_app_server.entity.ServiceJob;
+import com.team.home_service_app_server.entity.TechnicianJobDecline;
 import com.team.home_service_app_server.entity.TechnicianProfile;
 import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.BadRequestException;
 import com.team.home_service_app_server.exception.ConflictException;
 import com.team.home_service_app_server.repository.ServiceJobRepository;
+import com.team.home_service_app_server.repository.TechnicianJobDeclineRepository;
 import com.team.home_service_app_server.repository.TechnicianProfileRepository;
 
 @Service
@@ -26,34 +28,39 @@ public class TechnicianJobService {
 	private final TechnicianProfileRepository technicianProfileRepository;
 	private final ServiceJobRepository serviceJobRepository;
 	private final NotificationService notificationService;
+	private final TechnicianJobDeclineRepository technicianJobDeclineRepository;
 
 	public TechnicianJobService(
 			UserService userService,
 			TechnicianProfileRepository technicianProfileRepository,
 			ServiceJobRepository serviceJobRepository,
-			NotificationService notificationService) {
+			NotificationService notificationService,
+			TechnicianJobDeclineRepository technicianJobDeclineRepository) {
 		this.userService = userService;
 		this.technicianProfileRepository = technicianProfileRepository;
 		this.serviceJobRepository = serviceJobRepository;
 		this.notificationService = notificationService;
+		this.technicianJobDeclineRepository = technicianJobDeclineRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public long countWaitingAccept() {
-		Set<Long> serviceIds = acceptedServiceIds();
+		User technician = userService.requireCurrentTechnician();
+		Set<Long> serviceIds = acceptedServiceIds(technician);
 		if (serviceIds.isEmpty()) {
 			return 0;
 		}
-		return serviceJobRepository.countWaitingAcceptByServiceIds(serviceIds);
+		return serviceJobRepository.countWaitingAcceptByServiceIds(serviceIds, technician.getUserId());
 	}
 
 	@Transactional(readOnly = true)
 	public List<TechnicianJobDto> listWaitingAccept() {
-		Set<Long> serviceIds = acceptedServiceIds();
+		User technician = userService.requireCurrentTechnician();
+		Set<Long> serviceIds = acceptedServiceIds(technician);
 		if (serviceIds.isEmpty()) {
 			return List.of();
 		}
-		return serviceJobRepository.findWaitingAcceptByServiceIds(serviceIds).stream()
+		return serviceJobRepository.findWaitingAcceptByServiceIds(serviceIds, technician.getUserId()).stream()
 				.map(this::toDto)
 				.toList();
 	}
@@ -89,8 +96,22 @@ public class TechnicianJobService {
 		return toDto(saved);
 	}
 
-	private Set<Long> acceptedServiceIds() {
-		return acceptedServiceIds(userService.requireCurrentTechnician());
+	@Transactional
+	public void decline(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findById(jobId)
+				.orElseThrow(() -> new BadRequestException("ไม่พบคำขอบริการซ่อม"));
+		if (job.getStatus() != JobStatus.WAITING_ACCEPT || job.getTechnician() != null) {
+			throw new ConflictException("ไม่สามารถปฏิเสธงานนี้ได้");
+		}
+		if (technicianJobDeclineRepository.existsByTechnician_UserIdAndJob_Id(technician.getUserId(), jobId)) {
+			return;
+		}
+
+		TechnicianJobDecline decline = new TechnicianJobDecline();
+		decline.setTechnician(technician);
+		decline.setJob(job);
+		technicianJobDeclineRepository.save(decline);
 	}
 
 	private Set<Long> acceptedServiceIds(User technician) {
@@ -114,6 +135,9 @@ public class TechnicianJobService {
 				job.getService().getName(),
 				customerName,
 				job.getAddress(),
-				job.getStatus().name());
+				job.getLatitude(),
+				job.getLongitude(),
+				job.getStatus().name(),
+				job.getCreatedAt());
 	}
 }
