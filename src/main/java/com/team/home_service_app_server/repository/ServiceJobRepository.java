@@ -43,4 +43,42 @@ public interface ServiceJobRepository extends JpaRepository<ServiceJob, Long> {
 	List<ServiceJob> findWaitingAcceptByServiceIds(
 			@Param("serviceIds") Collection<Long> serviceIds,
 			@Param("technicianId") Long technicianId);
+
+	@Query("""
+			SELECT job FROM ServiceJob job
+			JOIN FETCH job.service s
+			JOIN FETCH s.category
+			JOIN FETCH job.customer
+			WHERE job.status = com.team.home_service_app_server.entity.JobStatus.ACCEPTED
+			  AND job.technician.userId = :technicianId
+			ORDER BY 
+				CASE WHEN :sort = 'soonest' THEN job.scheduledAt END ASC NULLS LAST,
+				CASE WHEN :sort != 'soonest' THEN job.createdAt END DESC
+			""")
+	List<ServiceJob> findPendingByTechnician(
+			@Param("technicianId") Long technicianId,
+			@Param("sort") String sort);
+
+	@Query("""
+			SELECT job FROM ServiceJob job
+			JOIN FETCH job.service s
+			JOIN FETCH s.category
+			JOIN FETCH job.customer
+			WHERE job.status = com.team.home_service_app_server.entity.JobStatus.COMPLETED
+			  AND job.technician.userId = :technicianId
+			ORDER BY job.scheduledAt DESC NULLS LAST, job.updatedAt DESC
+			""")
+	List<ServiceJob> findHistoryByTechnician(@Param("technicianId") Long technicianId);
+
+	@Query("""
+			SELECT job FROM ServiceJob job
+			JOIN FETCH job.service s
+			JOIN FETCH s.category
+			JOIN FETCH job.customer
+			WHERE job.id = :jobId
+			  AND job.technician.userId = :technicianId
+			""")
+	java.util.Optional<ServiceJob> findByIdAndTechnician(
+			@Param("jobId") Long jobId,
+			@Param("technicianId") Long technicianId);
 }
