@@ -16,8 +16,8 @@ class CustomerOrderServiceTest {
 
 	@Test
 	void mapsDatabaseStatusesToCardStatuses() {
-		assertEquals("pending", CustomerOrderService.uiStatus("PENDING"));
-		assertEquals("progress", CustomerOrderService.uiStatus("IN_PROGRESS"));
+		assertEquals("pending", CustomerOrderService.uiStatus("WAITING_ACCEPT"));
+		assertEquals("progress", CustomerOrderService.uiStatus("ACCEPTED"));
 		assertEquals("done", CustomerOrderService.uiStatus("COMPLETED"));
 	}
 

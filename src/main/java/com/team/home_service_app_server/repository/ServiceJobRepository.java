@@ -81,4 +81,12 @@ public interface ServiceJobRepository extends JpaRepository<ServiceJob, Long> {
 	java.util.Optional<ServiceJob> findByIdAndTechnician(
 			@Param("jobId") Long jobId,
 			@Param("technicianId") Long technicianId);
+
+	@Query("""
+			SELECT job FROM ServiceJob job
+			LEFT JOIN FETCH job.technician
+			JOIN job.customerOrder orderRow
+			WHERE orderRow.id IN :orderIds
+			""")
+	List<ServiceJob> findByOrderIds(@Param("orderIds") Collection<Long> orderIds);
 }

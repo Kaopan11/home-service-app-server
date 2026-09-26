@@ -41,6 +41,10 @@ public class ServiceJob {
 	@JoinColumn(name = "service_id", nullable = false)
 	private ServiceItem service;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "order_id")
+	private CustomerOrder customerOrder;
+
 	@Column(name = "address", nullable = false, columnDefinition = "text")
 	private String address;
 
