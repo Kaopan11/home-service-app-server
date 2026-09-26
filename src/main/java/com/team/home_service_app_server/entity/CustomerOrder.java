@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -36,8 +37,9 @@ public class CustomerOrder {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User customer;
 
-	@Column(name = "status", nullable = false)
-	private String status;
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "service_id", nullable = false)
+	private ServiceItem service;
 
 	@Column(name = "total_price", nullable = false)
 	private BigDecimal totalPrice;
@@ -48,7 +50,7 @@ public class CustomerOrder {
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
-	@OneToMany(mappedBy = "customerOrder")
+	@OneToMany(mappedBy = "customerOrder", cascade = CascadeType.ALL)
 	private List<OrderItem> items = new ArrayList<>();
 
 	@OneToMany(mappedBy = "customerOrder")
