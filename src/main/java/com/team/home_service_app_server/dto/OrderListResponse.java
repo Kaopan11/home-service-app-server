@@ -5,12 +5,14 @@ import java.util.List;
 public record OrderListResponse(String message, List<OrderCard> data) {
 
 	public record OrderCard(
+			Long jobId,
 			String code,
 			String status,
 			String datetime,
 			String staff,
 			List<String> items,
-			String total
+			String total,
+			Integer rating
 	) {
 	}
 

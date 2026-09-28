@@ -21,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team.home_service_app_server.dto.OrderListResponse.OrderCard;
 import com.team.home_service_app_server.dto.request.CreateChargeRequest;
+import com.team.home_service_app_server.dto.request.SubmitReviewRequest;
 import com.team.home_service_app_server.entity.CustomerOrder;
 import com.team.home_service_app_server.entity.JobStatus;
+import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.OrderItem;
 import com.team.home_service_app_server.entity.ServiceItem;
 import com.team.home_service_app_server.entity.ServiceJob;
@@ -30,6 +32,8 @@ import com.team.home_service_app_server.entity.ServiceOption;
 import com.team.home_service_app_server.entity.ServiceOptionItem;
 import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.BadRequestException;
+import com.team.home_service_app_server.exception.ConflictException;
+import com.team.home_service_app_server.exception.ForbiddenException;
 import com.team.home_service_app_server.repository.OrderRepository;
 import com.team.home_service_app_server.repository.ServiceItemRepository;
 import com.team.home_service_app_server.repository.ServiceJobRepository;
@@ -45,6 +49,7 @@ public class CustomerOrderService {
 	private final ServiceItemRepository serviceItemRepository;
 	private final ServiceOptionRepository serviceOptionRepository;
 	private final UserService userService;
+	private final NotificationService notificationService;
 	private final EntityManager entityManager;
 
 	public CustomerOrderService(
@@ -53,12 +58,14 @@ public class CustomerOrderService {
 			ServiceItemRepository serviceItemRepository,
 			ServiceOptionRepository serviceOptionRepository,
 			UserService userService,
+			NotificationService notificationService,
 			EntityManager entityManager) {
 		this.orderRepository = orderRepository;
 		this.serviceJobRepository = serviceJobRepository;
 		this.serviceItemRepository = serviceItemRepository;
 		this.serviceOptionRepository = serviceOptionRepository;
 		this.userService = userService;
+		this.notificationService = notificationService;
 		this.entityManager = entityManager;
 	}
 
@@ -122,7 +129,19 @@ public class CustomerOrderService {
 		job.setItemsDescription(String.join(", ", booking.lines().stream()
 				.map(line -> (line.option().getName() + " " + line.quantity() + " " + line.option().getUnit()).trim())
 				.toList()));
-		serviceJobRepository.save(job);
+		ServiceJob savedJob = serviceJobRepository.save(job);
+		String serviceName = booking.service().getName();
+		notificationService.notify(
+				booking.customer(),
+				NotificationType.JOB_CREATED,
+				"ได้รับคำสั่งซ่อมแล้ว",
+				"คำสั่งซ่อม \"" + serviceName + "\" ของคุณอยู่ระหว่างรอช่างรับงาน",
+				savedJob);
+		notificationService.notifyTechnicians(
+				NotificationType.JOB_CREATED,
+				"มีคำสั่งซ่อมใหม่",
+				"ลูกค้าสร้างคำสั่งซ่อม \"" + serviceName + "\"",
+				savedJob);
 	}
 
 	@Transactional(readOnly = true)
@@ -146,14 +165,72 @@ public class CustomerOrderService {
 					? firstNonNull(job.getUpdatedAt(), order.getScheduledAt(), order.getCreatedAt())
 					: firstNonNull(order.getScheduledAt(), order.getCreatedAt());
 			cards.add(new OrderCard(
+					job.getId(),
 					order.getOrderCode() == null ? "" : order.getOrderCode(),
 					status,
 					formatWhen(when, history),
 					staffName(job.getTechnician()),
 					order.getItems().stream().map(CustomerOrderService::formatItem).toList(),
-					formatTotal(order.getTotalPrice())));
+					formatTotal(order.getTotalPrice()),
+					job.getRating()));
 		}
 		return cards;
+	}
+
+	@Transactional
+	public OrderCard submitReview(Long jobId, SubmitReviewRequest request) {
+		User customer = userService.requireCurrentUserEntity();
+		ServiceJob job = serviceJobRepository.findById(jobId)
+				.orElseThrow(() -> new BadRequestException("ไม่พบคำสั่งซ่อม"));
+		if (!job.getCustomer().getUserId().equals(customer.getUserId())) {
+			throw new ForbiddenException("ไม่มีสิทธิ์รีวิวคำสั่งซ่อมนี้");
+		}
+		if (job.getStatus() != JobStatus.COMPLETED) {
+			throw new BadRequestException("รีวิวได้เฉพาะงานที่ดำเนินการสำเร็จ");
+		}
+		if (job.getRating() != null) {
+			throw new ConflictException("รีวิวคำสั่งซ่อมนี้อยู่แล้ว");
+		}
+
+		int rating = request.rating();
+		String comment = request.comment() == null ? null : request.comment().trim();
+		if (comment != null && comment.length() > 500) {
+			throw new BadRequestException("ความคิดเห็นต้องไม่เกิน 500 ตัวอักษร");
+		}
+		if (comment != null && comment.isBlank()) {
+			comment = null;
+		}
+
+		job.setRating(rating);
+		job.setReviewComment(comment);
+		ServiceJob saved = serviceJobRepository.save(job);
+
+		User technician = saved.getTechnician();
+		if (technician != null) {
+			String serviceName = saved.getService().getName();
+			notificationService.notify(
+					technician,
+					NotificationType.JOB_REVIEWED,
+					"มีรีวิวจากผู้รับบริการ",
+					"ลูกค้าให้คะแนน " + rating + " ดาว สำหรับ \"" + serviceName + "\"",
+					saved);
+		}
+
+		Instant when = firstNonNull(saved.getUpdatedAt(), saved.getScheduledAt(), saved.getCreatedAt());
+		String code = saved.getOrderCode() == null ? "" : saved.getOrderCode();
+		CustomerOrder order = saved.getCustomerOrder();
+		if (order != null && order.getOrderCode() != null) {
+			code = order.getOrderCode();
+		}
+		return new OrderCard(
+				saved.getId(),
+				code,
+				"done",
+				formatWhen(when, true),
+				staffName(saved.getTechnician()),
+				List.of(),
+				formatTotal(order == null ? saved.getTotalPrice() : order.getTotalPrice()),
+				saved.getRating());
 	}
 
 	static boolean isHistory(String scope) {
