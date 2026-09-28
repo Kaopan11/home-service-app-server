@@ -1,5 +1,6 @@
 package com.team.home_service_app_server.dto.technician;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record TechnicianJobDto(
@@ -10,6 +11,10 @@ public record TechnicianJobDto(
 		Double latitude,
 		Double longitude,
 		String status,
-		Instant createdAt
+		Instant createdAt,
+		String orderCode,
+		String itemsDescription,
+		Instant scheduledAt,
+		BigDecimal totalPrice
 ) {
 }
