@@ -13,17 +13,24 @@ import com.team.home_service_app_server.entity.Notification;
 import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.ServiceJob;
 import com.team.home_service_app_server.entity.User;
+import com.team.home_service_app_server.entity.UserRole;
 import com.team.home_service_app_server.repository.NotificationRepository;
+import com.team.home_service_app_server.repository.UserRepository;
 
 @Service
 public class NotificationService {
 
 	private final NotificationRepository notificationRepository;
 	private final UserService userService;
+	private final UserRepository userRepository;
 
-	public NotificationService(NotificationRepository notificationRepository, UserService userService) {
+	public NotificationService(
+			NotificationRepository notificationRepository,
+			UserService userService,
+			UserRepository userRepository) {
 		this.notificationRepository = notificationRepository;
 		this.userService = userService;
+		this.userRepository = userRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -64,6 +71,13 @@ public class NotificationService {
 		notification.setBody(body);
 		notification.setJob(job);
 		notificationRepository.save(notification);
+	}
+
+	@Transactional
+	public void notifyTechnicians(NotificationType type, String title, String body, ServiceJob job) {
+		for (User technician : userRepository.findByRole(UserRole.TECHNICIAN)) {
+			notify(technician, type, title, body, job);
+		}
 	}
 
 	private NotificationDto toDto(Notification notification) {

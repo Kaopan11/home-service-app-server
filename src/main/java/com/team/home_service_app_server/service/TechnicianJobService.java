@@ -88,11 +88,17 @@ public class TechnicianJobService {
 		job.setStatus(JobStatus.ACCEPTED);
 		ServiceJob saved = serviceJobRepository.save(job);
 
+		String serviceName = saved.getService().getName();
 		notificationService.notify(
 				saved.getCustomer(),
 				NotificationType.JOB_ACCEPTED,
 				"ช่างรับงานของคุณแล้ว",
-				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + saved.getService().getName() + "\" ของคุณแล้ว",
+				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + serviceName + "\" ของคุณแล้ว",
+				saved);
+		notificationService.notifyTechnicians(
+				NotificationType.JOB_ACCEPTED,
+				"ช่างรับงานแล้ว",
+				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + serviceName + "\" แล้ว",
 				saved);
 
 		return toDto(saved);
@@ -162,6 +168,18 @@ public class TechnicianJobService {
 		}
 		job.setStatus(JobStatus.COMPLETED);
 		ServiceJob saved = serviceJobRepository.save(job);
+		String serviceName = saved.getService().getName();
+		notificationService.notify(
+				saved.getCustomer(),
+				NotificationType.JOB_COMPLETED,
+				"งานซ่อมเสร็จแล้ว",
+				"ช่างทำงาน \"" + serviceName + "\" ของคุณเสร็จเรียบร้อยแล้ว",
+				saved);
+		notificationService.notifyTechnicians(
+				NotificationType.JOB_COMPLETED,
+				"งานซ่อมเสร็จแล้ว",
+				"ช่างทำงาน \"" + serviceName + "\" เสร็จแล้ว",
+				saved);
 		return toDetailDto(saved);
 	}
 
@@ -230,7 +248,7 @@ public class TechnicianJobService {
 				totalPrice,
 				customerName,
 				customerPhone,
-				job.getRating() != null ? job.getRating() : (job.getStatus() == JobStatus.COMPLETED ? 5 : null),
+				job.getRating(),
 				job.getReviewComment(),
 				job.getStatus().name(),
 				job.getCreatedAt());

@@ -17,6 +17,11 @@ public class CatalogSeedConfig {
 				jdbc.execute("ALTER TABLE services ALTER COLUMN image_url TYPE TEXT");
 				jdbc.execute("ALTER TABLE service_options ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0");
 				jdbc.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0");
+				jdbc.execute("ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check");
+				jdbc.execute("""
+						ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+						CHECK (type IN ('JOB_CREATED','JOB_ACCEPTED','JOB_COMPLETED','JOB_CANCELLED','JOB_REVIEWED'))
+						""");
 			} catch (Exception ignored) {
 				// ponytail: schema tweak is best-effort; PgBouncer can fail a prepared ALTER without blocking boot
 			}
