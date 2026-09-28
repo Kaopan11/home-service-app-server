@@ -259,6 +259,17 @@ public class TechnicianJobService {
 		if (customerName == null || customerName.isBlank()) {
 			customerName = job.getCustomer().getEmail();
 		}
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null
+				? job.getTotalPrice()
+				: java.math.BigDecimal.ZERO;
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+		String itemsDescription = job.getItemsDescription() != null && !job.getItemsDescription().isBlank()
+				? job.getItemsDescription()
+				: job.getService().getName();
 		return new TechnicianJobDto(
 				job.getId(),
 				job.getService().getName(),
@@ -267,6 +278,10 @@ public class TechnicianJobService {
 				job.getLatitude(),
 				job.getLongitude(),
 				job.getStatus().name(),
-				job.getCreatedAt());
+				job.getCreatedAt(),
+				orderCode,
+				itemsDescription,
+				scheduledAt,
+				totalPrice);
 	}
 }
