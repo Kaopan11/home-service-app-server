@@ -28,6 +28,10 @@ public record PromotionApiResponse(
 		return new PromotionApiResponse(true, null, promotion, null, null);
 	}
 
+	public static PromotionApiResponse applied(ApplyPromoResult result) {
+		return new PromotionApiResponse(true, null, result, null, null);
+	}
+
 	public static PromotionApiResponse created(PromotionDto promotion) {
 		return new PromotionApiResponse(true, "Promotion created successfully", promotion, null, null);
 	}
