@@ -288,7 +288,7 @@ public class CustomerOrderService {
 		if (orders.isEmpty()) {
 			return jobs;
 		}
-		List<Long> ids = orders.stream().map(CustomerOrder::getId).toList();
+		List<Long> ids = orders.stream().map(order -> order.getId()).toList();
 		for (ServiceJob job : serviceJobRepository.findByOrderIds(ids)) {
 			jobs.putIfAbsent(job.getCustomerOrder().getId(), job);
 		}

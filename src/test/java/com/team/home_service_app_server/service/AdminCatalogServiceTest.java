@@ -53,8 +53,8 @@ class AdminCatalogServiceTest {
 
 		ArgumentCaptor<ServiceOptionItem> savedOptions = ArgumentCaptor.forClass(ServiceOptionItem.class);
 		verify(options, org.mockito.Mockito.times(2)).save(savedOptions.capture());
-		assertEquals(List.of("เล็ก", "ใหญ่"), savedOptions.getAllValues().stream().map(ServiceOptionItem::getName).toList());
-		assertEquals(List.of(1, 2), savedOptions.getAllValues().stream().map(ServiceOptionItem::getSortOrder).toList());
+		assertEquals(List.of("เล็ก", "ใหญ่"), savedOptions.getAllValues().stream().map(item -> item.getName()).toList());
+		assertEquals(List.of(1, 2), savedOptions.getAllValues().stream().map(item -> item.getSortOrder()).toList());
 	}
 
 	@Test

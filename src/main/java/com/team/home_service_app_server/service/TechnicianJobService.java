@@ -12,7 +12,6 @@ import com.team.home_service_app_server.dto.technician.TechnicianJobDto;
 import com.team.home_service_app_server.dto.technician.TechnicianJobItemDto;
 import com.team.home_service_app_server.entity.JobStatus;
 import com.team.home_service_app_server.entity.NotificationType;
-import com.team.home_service_app_server.entity.ServiceItem;
 import com.team.home_service_app_server.entity.ServiceJob;
 import com.team.home_service_app_server.entity.TechnicianJobDecline;
 import com.team.home_service_app_server.entity.TechnicianProfile;
@@ -129,7 +128,7 @@ public class TechnicianJobService {
 			return Set.of();
 		}
 		return profile.getServices().stream()
-				.map(ServiceItem::getId)
+				.map(service -> service.getId())
 				.collect(Collectors.toSet());
 	}
 

@@ -93,10 +93,10 @@ public class AdminCategoryService {
 		}
 		List<Category> current = categoryRepository.findAllByActiveTrueOrderBySortOrderAscCreatedAtAsc();
 		if (current.size() != ids.size()
-				|| !current.stream().map(Category::getCategoryId).collect(Collectors.toSet()).equals(new HashSet<>(ids))) {
+				|| !current.stream().map(item -> item.getCategoryId()).collect(Collectors.toSet()).equals(new HashSet<>(ids))) {
 			throw new CategoryValidationException("category ids must include every active category");
 		}
-		Map<Integer, Category> byId = current.stream().collect(Collectors.toMap(Category::getCategoryId, item -> item));
+		Map<Integer, Category> byId = current.stream().collect(Collectors.toMap(item -> item.getCategoryId(), item -> item));
 		for (int index = 0; index < ids.size(); index++) {
 			byId.get(ids.get(index)).setSortOrder(index + 1);
 		}
@@ -124,9 +124,8 @@ public class AdminCategoryService {
 
 	private int nextSortOrder() {
 		return categoryRepository.findAllByActiveTrueOrderBySortOrderAscCreatedAtAsc().stream()
-				.map(Category::getSortOrder)
-				.filter(Objects::nonNull)
-				.max(Integer::compareTo)
+				.mapToInt(item -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+				.max()
 				.orElse(0) + 1;
 	}
 

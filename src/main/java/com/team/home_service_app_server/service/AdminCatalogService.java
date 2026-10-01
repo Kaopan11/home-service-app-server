@@ -77,7 +77,7 @@ public class AdminCatalogService {
 		item.setName(name);
 		item.setCategory(category);
 		item.setImageUrl(imageUrl);
-		item.setSortOrder(resolveCreateSortOrder(request.displayOrder()));
+		item.setSortOrder(resolveCreateSortOrder(request == null ? null : request.displayOrder()));
 		item = serviceItemRepository.save(item);
 		saveOptions(item, options);
 		return toDto(item);
@@ -132,10 +132,10 @@ public class AdminCatalogService {
 		}
 		List<ServiceItem> current = serviceItemRepository.findAllByActiveTrueOrderBySortOrderAsc();
 		if (current.size() != ids.size()
-				|| !current.stream().map(ServiceItem::getId).collect(Collectors.toSet()).equals(new HashSet<>(ids))) {
+				|| !current.stream().map(item -> item.getId()).collect(Collectors.toSet()).equals(new HashSet<>(ids))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "service ids must include every active service");
 		}
-		Map<Long, ServiceItem> byId = current.stream().collect(Collectors.toMap(ServiceItem::getId, item -> item));
+		Map<Long, ServiceItem> byId = current.stream().collect(Collectors.toMap(item -> item.getId(), item -> item));
 		for (int index = 0; index < ids.size(); index++) {
 			ServiceItem item = byId.get(ids.get(index));
 			item.setSortOrder(index + 1);
@@ -247,9 +247,8 @@ public class AdminCatalogService {
 
 	private int nextSortOrder() {
 		return serviceItemRepository.findAllByActiveTrueOrderBySortOrderAsc().stream()
-				.map(ServiceItem::getSortOrder)
-				.filter(java.util.Objects::nonNull)
-				.max(Integer::compareTo)
+				.mapToInt(item -> item.getSortOrder() == null ? 0 : item.getSortOrder())
+				.max()
 				.orElse(0) + 1;
 	}
 
