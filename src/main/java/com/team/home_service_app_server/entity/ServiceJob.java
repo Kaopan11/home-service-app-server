@@ -41,6 +41,10 @@ public class ServiceJob {
 	@JoinColumn(name = "service_id", nullable = false)
 	private ServiceItem service;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "order_id")
+	private CustomerOrder customerOrder;
+
 	@Column(name = "address", nullable = false, columnDefinition = "text")
 	private String address;
 
@@ -53,6 +57,24 @@ public class ServiceJob {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "status", nullable = false)
 	private JobStatus status = JobStatus.WAITING_ACCEPT;
+
+	@Column(name = "order_code", length = 32)
+	private String orderCode;
+
+	@Column(name = "total_price", precision = 12, scale = 2)
+	private java.math.BigDecimal totalPrice;
+
+	@Column(name = "scheduled_at")
+	private Instant scheduledAt;
+
+	@Column(name = "items_description", columnDefinition = "text")
+	private String itemsDescription;
+
+	@Column(name = "rating")
+	private Integer rating;
+
+	@Column(name = "review_comment", columnDefinition = "text")
+	private String reviewComment;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private Instant createdAt;
@@ -71,6 +93,9 @@ public class ServiceJob {
 		}
 		if (status == null) {
 			status = JobStatus.WAITING_ACCEPT;
+		}
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = "AD" + String.format("%08d", (System.currentTimeMillis() % 100000000L));
 		}
 	}
 

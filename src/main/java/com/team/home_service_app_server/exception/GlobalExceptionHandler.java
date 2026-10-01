@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.team.home_service_app_server.dto.ApiError;
 
@@ -35,6 +36,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(PasswordChangeException.class)
+	public ResponseEntity<ApiError> handlePasswordChange(PasswordChangeException exception) {
+		return ResponseEntity.badRequest().body(new ApiError(
+				exception.getMessage(),
+				exception.code(),
+				exception.errors()));
+	}
+
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(
@@ -51,6 +60,14 @@ public class GlobalExceptionHandler {
 				null));
 	}
 
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ApiError> handleBadRequest(BadRequestException exception) {
+		return ResponseEntity.badRequest().body(new ApiError(
+				exception.getMessage(),
+				"BAD_REQUEST",
+				null));
+	}
+
 	@ExceptionHandler(ForbiddenException.class)
 	public ResponseEntity<ApiError> handleForbidden(ForbiddenException exception) {
 		String message = exception.getMessage() == null || exception.getMessage().isBlank()
@@ -59,6 +76,17 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(
 				message,
 				"FORBIDDEN_ROLE",
+				null));
+	}
+
+	@ExceptionHandler(ResponseStatusException.class)
+	public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
+		String code = exception.getStatusCode() instanceof HttpStatus status
+				? status.name()
+				: "HTTP_ERROR";
+		return ResponseEntity.status(exception.getStatusCode()).body(new ApiError(
+				exception.getReason() == null ? code : exception.getReason(),
+				code,
 				null));
 	}
 

@@ -7,15 +7,19 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team.home_service_app_server.dto.technician.TechnicianJobDetailDto;
 import com.team.home_service_app_server.dto.technician.TechnicianJobDto;
+import com.team.home_service_app_server.dto.technician.TechnicianJobItemDto;
 import com.team.home_service_app_server.entity.JobStatus;
-import com.team.home_service_app_server.entity.ServiceItem;
+import com.team.home_service_app_server.entity.NotificationType;
 import com.team.home_service_app_server.entity.ServiceJob;
+import com.team.home_service_app_server.entity.TechnicianJobDecline;
 import com.team.home_service_app_server.entity.TechnicianProfile;
 import com.team.home_service_app_server.entity.User;
 import com.team.home_service_app_server.exception.BadRequestException;
 import com.team.home_service_app_server.exception.ConflictException;
 import com.team.home_service_app_server.repository.ServiceJobRepository;
+import com.team.home_service_app_server.repository.TechnicianJobDeclineRepository;
 import com.team.home_service_app_server.repository.TechnicianProfileRepository;
 
 @Service
@@ -24,32 +28,40 @@ public class TechnicianJobService {
 	private final UserService userService;
 	private final TechnicianProfileRepository technicianProfileRepository;
 	private final ServiceJobRepository serviceJobRepository;
+	private final NotificationService notificationService;
+	private final TechnicianJobDeclineRepository technicianJobDeclineRepository;
 
 	public TechnicianJobService(
 			UserService userService,
 			TechnicianProfileRepository technicianProfileRepository,
-			ServiceJobRepository serviceJobRepository) {
+			ServiceJobRepository serviceJobRepository,
+			NotificationService notificationService,
+			TechnicianJobDeclineRepository technicianJobDeclineRepository) {
 		this.userService = userService;
 		this.technicianProfileRepository = technicianProfileRepository;
 		this.serviceJobRepository = serviceJobRepository;
+		this.notificationService = notificationService;
+		this.technicianJobDeclineRepository = technicianJobDeclineRepository;
 	}
 
 	@Transactional(readOnly = true)
 	public long countWaitingAccept() {
-		Set<Long> serviceIds = acceptedServiceIds();
+		User technician = userService.requireCurrentTechnician();
+		Set<Long> serviceIds = acceptedServiceIds(technician);
 		if (serviceIds.isEmpty()) {
 			return 0;
 		}
-		return serviceJobRepository.countWaitingAcceptByServiceIds(serviceIds);
+		return serviceJobRepository.countWaitingAcceptByServiceIds(serviceIds, technician.getUserId());
 	}
 
 	@Transactional(readOnly = true)
 	public List<TechnicianJobDto> listWaitingAccept() {
-		Set<Long> serviceIds = acceptedServiceIds();
+		User technician = userService.requireCurrentTechnician();
+		Set<Long> serviceIds = acceptedServiceIds(technician);
 		if (serviceIds.isEmpty()) {
 			return List.of();
 		}
-		return serviceJobRepository.findWaitingAcceptByServiceIds(serviceIds).stream()
+		return serviceJobRepository.findWaitingAcceptByServiceIds(serviceIds, technician.getUserId()).stream()
 				.map(this::toDto)
 				.toList();
 	}
@@ -73,11 +85,40 @@ public class TechnicianJobService {
 
 		job.setTechnician(technician);
 		job.setStatus(JobStatus.ACCEPTED);
-		return toDto(serviceJobRepository.save(job));
+		ServiceJob saved = serviceJobRepository.save(job);
+
+		String serviceName = saved.getService().getName();
+		notificationService.notify(
+				saved.getCustomer(),
+				NotificationType.JOB_ACCEPTED,
+				"ช่างรับงานของคุณแล้ว",
+				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + serviceName + "\" ของคุณแล้ว",
+				saved);
+		notificationService.notifyTechnicians(
+				NotificationType.JOB_ACCEPTED,
+				"ช่างรับงานแล้ว",
+				"ช่าง " + technician.getFullName() + " รับคำขอบริการ \"" + serviceName + "\" แล้ว",
+				saved);
+
+		return toDto(saved);
 	}
 
-	private Set<Long> acceptedServiceIds() {
-		return acceptedServiceIds(userService.requireCurrentTechnician());
+	@Transactional
+	public void decline(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findById(jobId)
+				.orElseThrow(() -> new BadRequestException("ไม่พบคำขอบริการซ่อม"));
+		if (job.getStatus() != JobStatus.WAITING_ACCEPT || job.getTechnician() != null) {
+			throw new ConflictException("ไม่สามารถปฏิเสธงานนี้ได้");
+		}
+		if (technicianJobDeclineRepository.existsByTechnician_UserIdAndJob_Id(technician.getUserId(), jobId)) {
+			return;
+		}
+
+		TechnicianJobDecline decline = new TechnicianJobDecline();
+		decline.setTechnician(technician);
+		decline.setJob(job);
+		technicianJobDeclineRepository.save(decline);
 	}
 
 	private Set<Long> acceptedServiceIds(User technician) {
@@ -87,8 +128,129 @@ public class TechnicianJobService {
 			return Set.of();
 		}
 		return profile.getServices().stream()
-				.map(ServiceItem::getId)
+				.map(service -> service.getId())
 				.collect(Collectors.toSet());
+	}
+
+	@Transactional(readOnly = true)
+	public List<TechnicianJobItemDto> listPendingJobs(String sort) {
+		User technician = userService.requireCurrentTechnician();
+		String sortMode = "soonest".equalsIgnoreCase(sort) ? "soonest" : "latest";
+		return serviceJobRepository.findPendingByTechnician(technician.getUserId(), sortMode).stream()
+				.map(this::toItemDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<TechnicianJobItemDto> listHistoryJobs() {
+		User technician = userService.requireCurrentTechnician();
+		return serviceJobRepository.findHistoryByTechnician(technician.getUserId()).stream()
+				.map(this::toItemDto)
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public TechnicianJobDetailDto getJobDetail(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findByIdAndTechnician(jobId, technician.getUserId())
+				.orElseThrow(() -> new BadRequestException("ไม่พบข้อมูลคำสั่งซ่อม"));
+		return toDetailDto(job);
+	}
+
+	@Transactional
+	public TechnicianJobDetailDto completeJob(Long jobId) {
+		User technician = userService.requireCurrentTechnician();
+		ServiceJob job = serviceJobRepository.findByIdAndTechnician(jobId, technician.getUserId())
+				.orElseThrow(() -> new BadRequestException("ไม่พบข้อมูลคำสั่งซ่อม"));
+		if (job.getStatus() != JobStatus.ACCEPTED) {
+			throw new BadRequestException("สามารถจบงานได้เฉพาะงานที่อยู่ในสถานะรอดำเนินการเท่านั้น");
+		}
+		job.setStatus(JobStatus.COMPLETED);
+		ServiceJob saved = serviceJobRepository.save(job);
+		String serviceName = saved.getService().getName();
+		notificationService.notify(
+				saved.getCustomer(),
+				NotificationType.JOB_COMPLETED,
+				"งานซ่อมเสร็จแล้ว",
+				"ช่างทำงาน \"" + serviceName + "\" ของคุณเสร็จเรียบร้อยแล้ว",
+				saved);
+		notificationService.notifyTechnicians(
+				NotificationType.JOB_COMPLETED,
+				"งานซ่อมเสร็จแล้ว",
+				"ช่างทำงาน \"" + serviceName + "\" เสร็จแล้ว",
+				saved);
+		return toDetailDto(saved);
+	}
+
+	private TechnicianJobItemDto toItemDto(ServiceJob job) {
+		String customerName = job.getCustomer().getFullName();
+		if (customerName == null || customerName.isBlank()) {
+			customerName = job.getCustomer().getEmail();
+		}
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		Long categoryId = job.getService().getCategory() != null && job.getService().getCategory().getCategoryId() != null
+				? job.getService().getCategory().getCategoryId().longValue()
+				: null;
+		String categoryName = job.getService().getCategory() != null ? job.getService().getCategory().getName() : "";
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null ? job.getTotalPrice() : java.math.BigDecimal.valueOf(1550);
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+
+		return new TechnicianJobItemDto(
+				job.getId(),
+				orderCode,
+				job.getService().getId(),
+				job.getService().getName(),
+				categoryId,
+				categoryName,
+				scheduledAt,
+				totalPrice,
+				job.getStatus().name(),
+				job.getAddress(),
+				customerName);
+	}
+
+	private TechnicianJobDetailDto toDetailDto(ServiceJob job) {
+		String customerName = job.getCustomer().getFullName();
+		if (customerName == null || customerName.isBlank()) {
+			customerName = job.getCustomer().getEmail();
+		}
+		String customerPhone = job.getCustomer().getPhone() != null ? job.getCustomer().getPhone() : "";
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		Long categoryId = job.getService().getCategory() != null && job.getService().getCategory().getCategoryId() != null
+				? job.getService().getCategory().getCategoryId().longValue()
+				: null;
+		String categoryName = job.getService().getCategory() != null ? job.getService().getCategory().getName() : "";
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null ? job.getTotalPrice() : java.math.BigDecimal.valueOf(1550);
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+		String itemsDescription = job.getItemsDescription() != null && !job.getItemsDescription().isBlank()
+				? job.getItemsDescription()
+				: job.getService().getName();
+
+		return new TechnicianJobDetailDto(
+				job.getId(),
+				orderCode,
+				job.getService().getId(),
+				job.getService().getName(),
+				categoryId,
+				categoryName,
+				itemsDescription,
+				scheduledAt,
+				job.getAddress(),
+				job.getLatitude(),
+				job.getLongitude(),
+				totalPrice,
+				customerName,
+				customerPhone,
+				job.getRating(),
+				job.getReviewComment(),
+				job.getStatus().name(),
+				job.getCreatedAt());
 	}
 
 	private TechnicianJobDto toDto(ServiceJob job) {
@@ -96,11 +258,29 @@ public class TechnicianJobService {
 		if (customerName == null || customerName.isBlank()) {
 			customerName = job.getCustomer().getEmail();
 		}
+		String orderCode = job.getOrderCode();
+		if (orderCode == null || orderCode.isBlank()) {
+			orderCode = String.format("AD%08d", job.getId());
+		}
+		java.math.BigDecimal totalPrice = job.getTotalPrice() != null
+				? job.getTotalPrice()
+				: java.math.BigDecimal.ZERO;
+		java.time.Instant scheduledAt = job.getScheduledAt() != null ? job.getScheduledAt() : job.getCreatedAt();
+		String itemsDescription = job.getItemsDescription() != null && !job.getItemsDescription().isBlank()
+				? job.getItemsDescription()
+				: job.getService().getName();
 		return new TechnicianJobDto(
 				job.getId(),
 				job.getService().getName(),
 				customerName,
 				job.getAddress(),
-				job.getStatus().name());
+				job.getLatitude(),
+				job.getLongitude(),
+				job.getStatus().name(),
+				job.getCreatedAt(),
+				orderCode,
+				itemsDescription,
+				scheduledAt,
+				totalPrice);
 	}
 }

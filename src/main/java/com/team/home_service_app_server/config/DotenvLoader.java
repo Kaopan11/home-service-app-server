@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public final class DotenvLoader {
@@ -45,9 +46,9 @@ public final class DotenvLoader {
 
 	public static void copyIntoSystemProperties(Map<String, Object> values) {
 		values.forEach((key, value) -> {
-			if (System.getenv(key) == null && System.getProperty(key) == null) {
-				System.setProperty(key, String.valueOf(value));
-			}
+			String text = String.valueOf(value);
+			System.setProperty(key, text);
+			System.setProperty(key.toLowerCase(Locale.ROOT).replace('_', '.'), text);
 		});
 	}
 

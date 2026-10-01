@@ -84,6 +84,21 @@ public class SupabaseAuthClient {
 		}
 	}
 
+	public void updatePassword(String accessToken, String newPassword) {
+		try {
+			restClient.put()
+					.uri("/auth/v1/user")
+					.header("apikey", properties.anonKey())
+					.header("Authorization", "Bearer " + accessToken)
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(Map.of("password", newPassword))
+					.retrieve()
+					.toBodilessEntity();
+		} catch (RestClientResponseException exception) {
+			throw new IllegalStateException("password update failed");
+		}
+	}
+
 	public void signOut(String accessToken) {
 		if (accessToken == null || accessToken.isBlank()) {
 			return;

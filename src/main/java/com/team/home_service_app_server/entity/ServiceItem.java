@@ -30,8 +30,21 @@ public class ServiceItem {
 	@Column(name = "service_name", nullable = false)
 	private String name;
 
+	// ponytail: images are stored as data URLs for this MVP; move them to object storage when image volume grows.
+	@Column(name = "image_url", columnDefinition = "TEXT")
+	private String imageUrl;
+
+	@Column(name = "is_featured", nullable = false)
+	private boolean featured = false;
+
 	@Column(name = "display_order", nullable = false)
 	private Integer sortOrder;
+
+	@Column(name = "popularity_score", nullable = false)
+	private Integer popularityScore = 0;
+
+	@Column(name = "is_active", nullable = false)
+	private boolean active = true;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "category_id", nullable = false)
